@@ -1,16 +1,24 @@
-const express = require("express");
+import express from "express";
+import fs from "fs/promises";
+
 const app = express();
 const port = 3000;
 
 app.use(express.urlencoded({ extended: true }));
 
-const todos = [
-  { id: 1, title: "Buy milk", completed: false },
-  { id: 2, title: "Buy bread", completed: true },
-  { id: 3, title: "Buy eggs", completed: false },
-];
+async function loadTodos() {
+  const data = await fs.readFile("todos.json", "utf-8");
+  return JSON.parse(data);
+}
 
-app.get("/", (req, res) => {
+let todos = await loadTodos();
+
+async function editTodos(newTodos) {
+  todos = newTodos;
+  await fs.writeFile("todos.json", JSON.stringify(todos));
+}
+
+app.get("/", async (req, res) => {
   res.header("Content-Type", "text/html");
   res.send(`
 <main>
@@ -25,10 +33,13 @@ app.get("/", (req, res) => {
 </main>`);
 });
 
-app.post("/create-todo", (req, res) => {
+app.post("/create-todo", async (req, res) => {
   // get form data from request
   const { title } = req.body;
-  todos.push({ id: todos.length + 1, title, completed: false });
+  await editTodos([
+    ...todos,
+    { id: todos.length + 1, title, completed: false },
+  ]);
   res.redirect("/");
 });
 
