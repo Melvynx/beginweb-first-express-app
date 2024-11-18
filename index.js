@@ -10,7 +10,13 @@ const todos = [
 
 app.get("/", (req, res) => {
   res.header("Content-Type", "text/html");
-  res.send(`<h1>My ugly todos !</h1>`);
+  res.send(`
+<main>
+  <h1>My ugly todos !</h1>
+  <ul>
+    ${todos.map((todo) => `<li>${todo.title}</li>`).join("")}
+  </ul>
+</main>`);
 });
 
 app.listen(port, () => {
