@@ -5,6 +5,8 @@ const app = express();
 const port = 3000;
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static("public"));
 
 async function loadTodos() {
   const data = await fs.readFile("todos.json", "utf-8");
@@ -20,27 +22,64 @@ async function editTodos(newTodos) {
 
 app.get("/", async (req, res) => {
   res.header("Content-Type", "text/html");
+  console.log(todos);
   res.send(`
-<main>
-  <h1>My ugly todos !</h1>
-  <form action="/create-todo" method="post">
-    <input type="text" name="title" />
-    <button type="submit">Create</button>
-  </form>
-  <ul>
-    ${todos.map((todo) => `<li>${todo.title}</li>`).join("")}
-  </ul>
-</main>`);
+<head>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <h1>My ugly todos !</h1>
+    <form action="/todos" method="post">
+      <input type="text" name="title" />
+      <button type="submit">Create</button>
+    </form>
+    <ul class="todo-list">
+      ${todos
+        .map(
+          (todo) => `<li class="todo-item" data-id="${todo.id}">
+        <input type="checkbox" class="todo-checkbox" ${
+          todo.completed ? "checked" : ""
+        } />
+        ${todo.title}
+        <button class="delete-button">Delete</button>
+      </li>`
+        )
+        .join("")}
+
+    </ul>
+  </main>
+  <script src="/script.js"></script>
+</body>`);
 });
 
-app.post("/create-todo", async (req, res) => {
+app.post("/todos", async (req, res) => {
   // get form data from request
   const { title } = req.body;
-  await editTodos([
-    ...todos,
-    { id: todos.length + 1, title, completed: false },
-  ]);
+  await editTodos([...todos, { id: Date.now(), title, completed: false }]);
   res.redirect("/");
+});
+
+app.patch("/todos/:id", async (req, res) => {
+  const { id } = req.params;
+  const { completed } = req.body;
+
+  await editTodos(
+    todos.map((todo) =>
+      todo.id === parseInt(id) ? { ...todo, completed } : todo
+    )
+  );
+
+  res.header("Content-Type", "text/json");
+  res.send(JSON.stringify({ success: true }));
+});
+
+app.delete("/todos/:id", async (req, res) => {
+  const todoId = parseInt(req.params.id, 10);
+  todos = todos.filter((todo) => todo.id !== todoId);
+  await fs.writeFile("todos.json", JSON.stringify(todos));
+  res.header("Content-Type", "text/json");
+  res.send(JSON.stringify({ success: true }));
 });
 
 app.listen(port, () => {
